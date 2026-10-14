@@ -122,7 +122,7 @@ Use the provider's required SSL options. The application runs the checked-in V1â
 ### 2. Deploy the backend to Render
 
 1. Create a Render **Web Service** from your GitHub repository.
-2. Select **Docker** as the runtime and set the Docker build context/root directory to `backend-java/`.
+2. Select **Docker** as the runtime, leave **Root Directory** blank so the build context is the repository root, and set **Dockerfile Path** to `backend-java/Dockerfile`.
 3. Add `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION_MILLIS`, and `CORS_ALLOWED_ORIGINS` as Render environment variables. Render supplies `PORT`; the application binds to it.
 4. Set `CORS_ALLOWED_ORIGINS` to the exact browser origin for the deployed Vercel site (for example `https://your-project.vercel.app`), without a wildcard. For local development, use `http://localhost:5173`.
 5. Generate `JWT_SECRET` from at least 32 cryptographically random bytes and Base64-encode the bytes. Keep secrets in Render's environment settings only; never commit them.
