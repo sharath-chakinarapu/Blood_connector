@@ -1,0 +1,6 @@
+.env
+.git
+.mvn
+mvnw
+mvnw.cmd
+target
