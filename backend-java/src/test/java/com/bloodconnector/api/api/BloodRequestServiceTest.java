@@ -3,8 +3,10 @@ package com.bloodconnector.api.api;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -140,6 +142,33 @@ class BloodRequestServiceTest {
         donor.setAvailable(false);
         assertThrows(AccessDeniedException.class,
                 () -> service.getRequest("donor@example.com", requestId));
+    }
+
+    @Test
+    void nearbyRequestsRequireAvailabilityAndNinetyDaysSinceDonation() {
+        UserAccount donor = donor();
+        when(userRepository.findByEmailIgnoreCase("donor@example.com")).thenReturn(Optional.of(donor));
+
+        donor.setLastDonationDate(LocalDate.of(2026, 7, 16));
+        assertThrows(AccessDeniedException.class,
+                () -> service.getRelevantOpenRequests("donor@example.com"));
+        verify(requestRepository, never()).findOpenMatchingRequestsNear(
+                any(), any(), any(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
+                anyDouble(), anyDouble(), anyDouble(), any());
+
+        donor.setLastDonationDate(LocalDate.of(2026, 7, 15));
+        donor.setAvailable(false);
+        assertThrows(AccessDeniedException.class,
+                () -> service.getRelevantOpenRequests("donor@example.com"));
+        verify(requestRepository, never()).findOpenMatchingRequestsNear(
+                any(), any(), any(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
+                anyDouble(), anyDouble(), anyDouble(), any());
+
+        donor.setAvailable(true);
+        assertEquals(java.util.List.of(), service.getRelevantOpenRequests("donor@example.com"));
+        verify(requestRepository).findOpenMatchingRequestsNear(
+                any(), any(), any(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
+                anyDouble(), anyDouble(), anyDouble(), any());
     }
 
     private static UserAccount hospital() {

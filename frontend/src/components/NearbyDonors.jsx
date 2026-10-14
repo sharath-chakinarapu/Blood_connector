@@ -10,60 +10,62 @@ export default function NearbyDonors({ profile }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!profile || profile.latitude == null || profile.longitude == null) return;
-
-    const fetchDonors = async () => {
-      try {
-        const params = new URLSearchParams({
-          bloodGroup: toApiBloodGroup(bloodGroup),
-          latitude: profile.latitude,
-          longitude: profile.longitude,
-          maxDistanceKm: "30",
-        });
-        const res = await API.get(`/request/donors?${params}`);
-        setDonors(res.data);
-        setError("");
-      } catch (requestError) {
-        setError(apiErrorMessage(requestError, "Unable to fetch donors."));
+    if (!profile || profile.latitude == null || profile.longitude == null) {
+      return undefined;
+    }
+    let active = true;
+    const params = new URLSearchParams({
+      bloodGroup: toApiBloodGroup(bloodGroup),
+      latitude: profile.latitude,
+      longitude: profile.longitude,
+      maxDistanceKm: "30",
+    });
+    API.get(`/request/donors?${params}`)
+      .then(({ data }) => {
+        if (active) setDonors(data);
+      })
+      .catch((requestError) => {
+        if (!active) return;
+        setError(apiErrorMessage(requestError, "Unable to fetch eligible donors."));
         setDonors([]);
-      } finally {
-        setLoading(false);
-      }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
     };
-
-    fetchDonors();
   }, [profile, bloodGroup]);
 
   if (!profile) return null;
 
   return (
-    <section className="card" style={{ padding: 28 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 18 }}>
-        <div>
-          <div style={{ fontSize: 14, color: "#e11d48", fontWeight: 700 }}>Nearby donors</div>
-          <h2 style={{ margin: "6px 0 0", fontSize: 22, color: "#111827" }}>Real donors near your hospital</h2>
-        </div>
-        <label>Blood group{" "}
-          <select value={bloodGroup} onChange={(event) => setBloodGroup(event.target.value)}>
+    <section className="panel">
+      <div className="panel-heading">
+        <div><p className="eyebrow">DONOR MATCHING</p><h2>Nearby donors</h2></div>
+      </div>
+      <div className="search-controls">
+        <p className="page-lead">Eligible, available donors within 30 km.</p>
+        <label className="field">Blood group
+          <select value={bloodGroup} onChange={(event) => {
+            setLoading(true);
+            setError("");
+            setBloodGroup(event.target.value);
+          }}>
             {bloodGroups.map((group) => <option key={group}>{group}</option>)}
           </select>
         </label>
       </div>
-
       {profile.latitude == null || profile.longitude == null ? (
-        <div role="alert" style={{ padding: 24, borderRadius: 18, background: "#fee2e2", color: "#991b1b" }}>Hospital location is required to load donors.</div>
+        <div className="alert-card alert-card--warning" role="status">Add your hospital location to search nearby donors.</div>
       ) : loading ? (
-        <div style={{ padding: 24, borderRadius: 18, background: "#f8fafc", color: "#475569" }}>Loading active donors...</div>
+        <p className="loading-state" role="status">Finding eligible donors…</p>
       ) : error ? (
-        <div style={{ padding: 24, borderRadius: 18, background: "#fee2e2", color: "#991b1b" }}>{error}</div>
+        <div className="alert-card alert-card--error" role="alert">{error}</div>
       ) : donors.length === 0 ? (
-        <div style={{ padding: 24, borderRadius: 18, background: "#f8fafc", color: "#475569" }}>No active donors available right now.</div>
+        <div className="empty-state"><h3>No matching donors found</h3><p>No available donor matching this blood group is currently within 30 km.</p></div>
       ) : (
-        <div style={{ display: "grid", gap: 18 }}>
-          {donors.map((donor) => (
-            <DonorCard key={donor.id} donor={donor} />
-          ))}
-        </div>
+        <div className="donor-list">{donors.map((donor) => <DonorCard key={donor.id} donor={donor} />)}</div>
       )}
     </section>
   );

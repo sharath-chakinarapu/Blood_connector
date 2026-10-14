@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import API from "../api/axios";
 import { useAuth } from "../auth/useAuth";
-import { apiErrorMessage, fromApiRole } from "../api/domain";
+import { fromApiRole } from "../api/domain";
 
 export default function NavBar() {
   const navigate = useNavigate();
@@ -10,68 +10,68 @@ export default function NavBar() {
   const { user, status, logout } = useAuth();
   const role = fromApiRole(user?.role);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [unreadError, setUnreadError] = useState("");
-
-  const isHome = location.pathname === "/";
-  const isDashboard = location.pathname === "/dashboard" || location.pathname === "/find-donors";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadError, setUnreadError] = useState(false);
   const isLoggedIn = status === "authenticated" && Boolean(user);
+  const dashboardPath = role === "hospital" ? "/dashboard" : "/find-donors";
 
   useEffect(() => {
     if (!isLoggedIn) return undefined;
     let active = true;
-    const loadUnread = async () => {
-      try {
-        const res = await API.get("/chats");
+    API.get("/chats")
+      .then(({ data }) => {
         if (!active) return;
-        const count = res.data.reduce((total, conversation) => total + (conversation.unreadCount || 0), 0);
-        setUnreadCount(count);
-        setUnreadError("");
-      } catch (requestError) {
-        if (active) {
-          setUnreadCount(0);
-          setUnreadError(apiErrorMessage(requestError, "Unread message count could not be refreshed."));
-        }
-      }
-    };
-    loadUnread();
+        setUnreadCount(data.reduce((total, conversation) => total + (conversation.unreadCount || 0), 0));
+        setUnreadError(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setUnreadCount(0);
+        setUnreadError(true);
+      });
     return () => {
       active = false;
     };
-  }, [location, isLoggedIn]);
+  }, [isLoggedIn, location.pathname]);
 
   return (
-    <div style={{ background: "white", color: "#0f172a", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", borderBottom: "1px solid #fee2e2" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <Link to="/" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ fontWeight: 700, fontSize: 22 }}>BloodBridge</div>
-          <div style={{ fontSize: 12, color: "#b91c1c" }}>Bridge between donor & receiver</div>
+    <header className="site-header">
+      <div className="navbar">
+        <Link className="brand" to="/" aria-label="Blood Connector home" onClick={() => setMenuOpen(false)}>
+          <span className="brand-mark" aria-hidden="true">+</span>
+          <span className="brand-copy"><strong>Blood Connector</strong><small>Care, connected.</small></span>
         </Link>
-        {isDashboard && (
-          <Link style={{ background: "#f87171", color: "white", borderRadius: 12, padding: "10px 14px", textDecoration: "none", fontWeight: 600 }} to="/">Home</Link>
-        )}
-        {isHome && isLoggedIn && (
-          <Link style={{ background: "#f87171", color: "white", borderRadius: 12, padding: "10px 14px", textDecoration: "none", fontWeight: 600 }} to={role === "hospital" ? "/dashboard" : "/find-donors"}>Dashboard</Link>
-        )}
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-expanded={menuOpen}
+          aria-controls="primary-navigation"
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span /><span /><span />
+        </button>
+        <nav id="primary-navigation" className={`nav-links ${menuOpen ? "nav-links--open" : ""}`} aria-label="Main navigation">
+          <NavLink className={({ isActive }) => `nav-link${isActive ? " nav-link--active" : ""}`} to="/" onClick={() => setMenuOpen(false)}>Home</NavLink>
+          {isLoggedIn ? (
+            <>
+              <NavLink className={({ isActive }) => `nav-link${isActive ? " nav-link--active" : ""}`} to={dashboardPath} onClick={() => setMenuOpen(false)}>Dashboard</NavLink>
+              <NavLink className={({ isActive }) => `nav-link${isActive ? " nav-link--active" : ""}`} to="/chats" onClick={() => setMenuOpen(false)}>
+                Messages
+                {unreadCount > 0 && <span className="unread-badge" aria-label={`${unreadCount} unread messages`}>{unreadCount}</span>}
+              </NavLink>
+              {unreadError && <span className="nav-status" role="status">Unread count unavailable</span>}
+              <NavLink className={({ isActive }) => `nav-link${isActive ? " nav-link--active" : ""}`} to="/profile" onClick={() => setMenuOpen(false)}>Profile</NavLink>
+              <button className="button button--quiet nav-logout" type="button" onClick={() => { setMenuOpen(false); logout(); navigate("/login"); }}>Sign out</button>
+            </>
+          ) : (
+            <>
+              <NavLink className={({ isActive }) => `nav-link${isActive ? " nav-link--active" : ""}`} to="/login" onClick={() => setMenuOpen(false)}>Sign in</NavLink>
+              <Link className="button button--primary nav-register" to="/register" onClick={() => setMenuOpen(false)}>Create account</Link>
+            </>
+          )}
+        </nav>
       </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        {role === "hospital" && (
-          <button title="Create SOS alert" style={{ background: "#fecaca", border: "none", borderRadius: 12, padding: "10px 14px", color: "#991b1b", cursor: "pointer", fontSize: 16 }} onClick={() => navigate("/dashboard")}>SOS</button>
-        )}
-        {isLoggedIn ? (
-          <>
-            <button title="Chats" style={{ background: "#f87171", border: "none", borderRadius: 12, padding: "10px 14px", color: "white", cursor: "pointer", fontSize: 16 }} onClick={() => navigate("/chats")}>💬{unreadCount > 0 && <span style={{ marginLeft: 6, background: "#ef4444", borderRadius: "50%", width: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>{unreadCount}</span>}</button>
-            {unreadError && <span role="status" title={unreadError} style={{ color: "#991b1b", fontSize: 12 }}>Unread count unavailable</span>}
-            <button title="Profile" style={{ background: "#f87171", border: "none", borderRadius: 12, padding: "10px 14px", color: "white", cursor: "pointer", fontSize: 16 }} onClick={() => navigate("/profile")}>👤</button>
-            <button style={{ background: "#f87171", border: "none", borderRadius: 12, padding: "10px 14px", color: "white", cursor: "pointer" }} onClick={() => { logout(); navigate("/login"); }}>Logout</button>
-          </>
-        ) : (
-          <>
-            <Link style={{ background: "#b91c1c", color: "white", borderRadius: 12, padding: "10px 14px", textDecoration: "none", fontWeight: 600 }} to="/login">Sign In</Link>
-            <Link style={{ background: "#ef4444", color: "white", borderRadius: 12, padding: "10px 14px", textDecoration: "none", fontWeight: 600 }} to="/register">Sign Up</Link>
-          </>
-        )}
-      </div>
-    </div>
+    </header>
   );
 }

@@ -11,23 +11,15 @@ export default function Register() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    role: "DONOR",
-    bloodGroup: "O+",
-    hospitalName: "",
-    address: "",
-    latitude: "",
-    longitude: "",
-    phone: "",
+    name: "", email: "", password: "", role: "DONOR", bloodGroup: "O+",
+    hospitalName: "", address: "", latitude: "", longitude: "", phone: "",
   });
 
   const updateField = (field, value) => setForm((current) => ({ ...current, [field]: value }));
 
   const handleUseLocation = () => {
     if (!navigator.geolocation) {
-      setLocationStatus("Geolocation is not supported in this browser.");
+      setLocationStatus("Location is not supported by this browser. Enter coordinates below.");
       return;
     }
     setLocationStatus("Detecting current location…");
@@ -38,9 +30,9 @@ export default function Register() {
           latitude: coords.latitude.toFixed(6),
           longitude: coords.longitude.toFixed(6),
         }));
-        setLocationStatus("Location detected successfully.");
+        setLocationStatus("Location added. You can adjust it before submitting.");
       },
-      (locationError) => setLocationStatus(`Location error: ${locationError.message}`),
+      () => setLocationStatus("Could not access location. Check browser permission or enter coordinates manually."),
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
@@ -48,6 +40,7 @@ export default function Register() {
   const handleRegister = async (event) => {
     event.preventDefault();
     setSubmitting(true);
+    setError("");
     try {
       const payload = {
         name: form.name.trim(),
@@ -72,75 +65,74 @@ export default function Register() {
   };
 
   return (
-    <div style={{ background: "#fdf2f2", minHeight: "100vh", padding: 40 }}>
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: 28, background: "white", borderRadius: 16, boxShadow: "0 20px 40px rgba(15, 23, 42, 0.08)" }}>
-        <h2 style={{ marginBottom: 24, color: "#991b1b" }}>Create your BloodBridge account</h2>
-        <form onSubmit={handleRegister} style={{ display: "grid", gap: 16 }}>
-          <label style={{ display: "grid", gap: 8, color: "#334155" }}>
-            Full Name
-            <input required maxLength="120" value={form.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Enter your name" />
-          </label>
-          <label style={{ display: "grid", gap: 8, color: "#334155" }}>
-            Email
-            <input required type="email" maxLength="254" value={form.email} onChange={(event) => updateField("email", event.target.value)} placeholder="your@email.com" />
-          </label>
-          <label style={{ display: "grid", gap: 8, color: "#334155" }}>
-            Password (at least 8 characters)
-            <input required type="password" minLength="8" maxLength="72" value={form.password} onChange={(event) => updateField("password", event.target.value)} placeholder="Create a password" />
-          </label>
-          <label style={{ display: "grid", gap: 8, color: "#334155" }}>
-            Register as
-            <select value={form.role} onChange={(event) => updateField("role", event.target.value)}>
-              <option value="DONOR">Donor</option>
-              <option value="HOSPITAL">Hospital</option>
-            </select>
-          </label>
-          {form.role === "HOSPITAL" ? (
-            <label style={{ display: "grid", gap: 8, color: "#334155" }}>
-              Hospital Name
-              <input required maxLength="160" value={form.hospitalName} onChange={(event) => updateField("hospitalName", event.target.value)} placeholder="The hospital or clinic name" />
+    <main className="auth-page">
+      <aside className="auth-aside">
+        <div className="auth-aside__content">
+          <span className="auth-aside__mark" aria-hidden="true">+</span>
+          <p className="eyebrow">A COMMUNITY OF CARE</p>
+          <h1>Join a more connected response to blood needs.</h1>
+          <p>Create a donor or hospital account. Your role determines which tools and information you can access.</p>
+        </div>
+      </aside>
+      <section className="auth-panel auth-panel--register">
+        <p className="eyebrow">GET STARTED</p>
+        <h1>Create your account</h1>
+        <p>Complete your details to securely join Blood Connector.</p>
+        <form className="auth-form" onSubmit={handleRegister}>
+          <div className="form-grid">
+            <label className="form-span-2">Full name
+              <input required maxLength="120" autoComplete="name" value={form.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Your name" />
             </label>
-          ) : (
-            <label style={{ display: "grid", gap: 8, color: "#334155" }}>
-              Blood Group
-              <select value={form.bloodGroup} onChange={(event) => updateField("bloodGroup", event.target.value)}>
-                {bloodGroups.map((group) => <option key={group}>{group}</option>)}
+            <label className="form-span-2">Email address
+              <input required type="email" maxLength="254" autoComplete="email" value={form.email} onChange={(event) => updateField("email", event.target.value)} placeholder="you@example.com" />
+            </label>
+            <label className="form-span-2">Password
+              <input required type="password" minLength="8" maxLength="72" autoComplete="new-password" value={form.password} onChange={(event) => updateField("password", event.target.value)} placeholder="At least 8 characters" />
+              <span className="form-help">Use at least 8 characters.</span>
+            </label>
+            <label className="form-span-2">Account type
+              <select value={form.role} onChange={(event) => updateField("role", event.target.value)}>
+                <option value="DONOR">Blood donor</option>
+                <option value="HOSPITAL">Hospital</option>
               </select>
             </label>
-          )}
-          <label style={{ display: "grid", gap: 8, color: "#334155" }}>
-            Address (optional)
-            <input maxLength="500" value={form.address} onChange={(event) => updateField("address", event.target.value)} placeholder="Address" />
-          </label>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <button type="button" onClick={handleUseLocation}>Use my current location</button>
-            <span role="status" style={{ alignSelf: "center", color: "#475569" }}>
-              {locationStatus || "Coordinates are required for nearby matching."}
-            </span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <label style={{ display: "grid", gap: 8, color: "#334155" }}>
-              Latitude
+            {form.role === "HOSPITAL" ? (
+              <label className="form-span-2">Hospital name
+                <input required maxLength="160" value={form.hospitalName} onChange={(event) => updateField("hospitalName", event.target.value)} placeholder="Hospital or clinic name" />
+              </label>
+            ) : (
+              <label className="form-span-2">Blood group
+                <select value={form.bloodGroup} onChange={(event) => updateField("bloodGroup", event.target.value)}>
+                  {bloodGroups.map((group) => <option key={group}>{group}</option>)}
+                </select>
+              </label>
+            )}
+            <label className="form-span-2">Phone number
+              <input required maxLength="30" autoComplete="tel" value={form.phone} onChange={(event) => updateField("phone", event.target.value)} placeholder="Contact number" />
+            </label>
+            <label className="form-span-2">Address <span className="form-help">(optional)</span>
+              <input maxLength="500" autoComplete="street-address" value={form.address} onChange={(event) => updateField("address", event.target.value)} placeholder="Street, city" />
+            </label>
+            <div className="form-span-2">
+              <div className="form-actions">
+                <button className="button button--secondary" type="button" onClick={handleUseLocation}>Use my location</button>
+                <span className="form-help" role="status">{locationStatus || "Location coordinates are needed for nearby matching."}</span>
+              </div>
+            </div>
+            <label>Latitude
               <input required type="number" min="-90" max="90" step="any" value={form.latitude} onChange={(event) => updateField("latitude", event.target.value)} placeholder="19.0760" />
             </label>
-            <label style={{ display: "grid", gap: 8, color: "#334155" }}>
-              Longitude
+            <label>Longitude
               <input required type="number" min="-180" max="180" step="any" value={form.longitude} onChange={(event) => updateField("longitude", event.target.value)} placeholder="72.8777" />
             </label>
           </div>
-          <label style={{ display: "grid", gap: 8, color: "#334155" }}>
-            Phone
-            <input required maxLength="30" value={form.phone} onChange={(event) => updateField("phone", event.target.value)} placeholder="Phone number" />
-          </label>
-          <button type="submit" disabled={submitting} style={{ width: "100%", marginTop: 8, padding: 14, borderRadius: 12, border: "none", background: "#b91c1c", color: "white", fontWeight: 600, cursor: "pointer" }}>
-            {submitting ? "Creating account…" : "Register"}
+          {error && <div className="alert-card alert-card--error" role="alert">{error}</div>}
+          <button className="button button--primary button--large" type="submit" disabled={submitting}>
+            {submitting ? "Creating account…" : "Create account"}
           </button>
-          {error && <p role="alert" style={{ color: "#b91c1c", margin: 0 }}>{error}</p>}
         </form>
-        <p style={{ marginTop: 20, textAlign: "center", color: "#475569" }}>
-          Already registered? <Link to="/login" style={{ color: "#b91c1c" }}>Login</Link>
-        </p>
-      </div>
-    </div>
+        <p className="auth-footnote">Already have an account? <Link to="/login">Sign in</Link></p>
+      </section>
+    </main>
   );
 }

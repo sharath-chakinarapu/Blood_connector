@@ -26,6 +26,7 @@ export default function Profile() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const fetchProfile = async () => {
     try {
@@ -46,6 +47,8 @@ export default function Profile() {
       setError("");
     } catch (requestError) {
       setError(apiErrorMessage(requestError, "Could not load profile."));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,62 +116,91 @@ export default function Profile() {
   };
 
   if (!profile) {
-    return <main role="status" style={{ padding: 32 }}>{error || "Loading profile…"}</main>;
+    return (
+      <main className="page-shell">
+        <div className="page-container">
+          {loading ? <p className="loading-state" role="status">Loading your profile…</p> : (
+            <section className="alert-card alert-card--error" role="alert">
+              <h1>Profile unavailable</h1>
+              <p>{error || "Could not load profile."}</p>
+              <button className="button button--secondary" type="button" onClick={fetchProfile}>Try again</button>
+            </section>
+          )}
+        </div>
+      </main>
+    );
   }
 
   return (
-    <div style={{ background: "#fdf2f2", minHeight: "100vh", padding: 24 }}>
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: 24, background: "white", borderRadius: 20, boxShadow: "0 20px 40px rgba(15, 23, 42, 0.08)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, gap: 12, flexWrap: "wrap" }}>
+    <main className="page-shell">
+      <div className="page-container page-container--narrow">
+        <section className="panel">
+        <div className="page-heading">
           <div>
-            <h2 style={{ margin: 0, color: "#991b1b" }}>Your Profile</h2>
-            <p style={{ color: "#475569", marginTop: 8 }}>Review your account details and edit information anytime.</p>
+            <p className="eyebrow">ACCOUNT SETTINGS</p>
+            <h1>Your profile</h1>
+            <p className="page-lead">Keep your contact and location details current for accurate matching.</p>
           </div>
-          <button type="button" onClick={() => navigate(role === "hospital" ? "/dashboard" : "/find-donors")}>Back to Dashboard</button>
+          <button className="button button--secondary" type="button" onClick={() => navigate(role === "hospital" ? "/dashboard" : "/find-donors")}>Back to dashboard</button>
         </div>
-        <form onSubmit={handleSave} style={{ display: "grid", gap: 18 }}>
-          <label style={{ display: "grid", gap: 8 }}>Full Name
-            <input required maxLength="120" value={form.name} onChange={(event) => updateField("name", event.target.value)} />
-          </label>
-          <label style={{ display: "grid", gap: 8 }}>Phone
-            <input required maxLength="30" value={form.phone} onChange={(event) => updateField("phone", event.target.value)} />
-          </label>
-          {role === "donor" ? (
-            <>
-              <label style={{ display: "grid", gap: 8 }}>Blood Group
-                <select value={form.bloodGroup} onChange={(event) => updateField("bloodGroup", event.target.value)}>
-                  {bloodGroups.map((group) => <option key={group}>{group}</option>)}
-                </select>
+        <form className="profile-form" onSubmit={handleSave}>
+          <div className="profile-form__section">
+            <h2>Contact details</h2>
+            <div className="form-grid">
+              <label>Full name
+                <input required maxLength="120" autoComplete="name" value={form.name} onChange={(event) => updateField("name", event.target.value)} />
               </label>
-              <label style={{ display: "grid", gap: 8 }}>Last Donation Date
-                <input type="date" max={new Date().toISOString().slice(0, 10)} value={form.lastDonationDate} onChange={(event) => updateField("lastDonationDate", event.target.value)} />
+              <label>Phone
+                <input required maxLength="30" autoComplete="tel" value={form.phone} onChange={(event) => updateField("phone", event.target.value)} />
               </label>
-              <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <input type="checkbox" checked={form.available} onChange={(event) => updateField("available", event.target.checked)} />
-                Available to donate
+              {role === "hospital" && <label className="form-span-2">Hospital name
+                <input required maxLength="160" value={form.hospitalName} onChange={(event) => updateField("hospitalName", event.target.value)} />
+              </label>}
+              <label className="form-span-2">Address
+                <input maxLength="500" autoComplete="street-address" value={form.address} onChange={(event) => updateField("address", event.target.value)} />
               </label>
-            </>
-          ) : (
-            <label style={{ display: "grid", gap: 8 }}>Hospital Name
-              <input required maxLength="160" value={form.hospitalName} onChange={(event) => updateField("hospitalName", event.target.value)} />
-            </label>
-          )}
-          <label style={{ display: "grid", gap: 8 }}>Address
-            <input maxLength="500" value={form.address} onChange={(event) => updateField("address", event.target.value)} />
-          </label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <label style={{ display: "grid", gap: 8 }}>Latitude
-              <input required type="number" min="-90" max="90" step="any" value={form.latitude} onChange={(event) => updateField("latitude", event.target.value)} />
-            </label>
-            <label style={{ display: "grid", gap: 8 }}>Longitude
-              <input required type="number" min="-180" max="180" step="any" value={form.longitude} onChange={(event) => updateField("longitude", event.target.value)} />
-            </label>
+            </div>
           </div>
-          <button type="submit" disabled={saving}>{saving ? "Saving…" : "Save Profile"}</button>
-          {message && <p role="status" style={{ color: "#16a34a" }}>{message}</p>}
-          {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
+          {role === "donor" && (
+            <div className="profile-form__section">
+              <h2>Donor details</h2>
+              <div className="form-grid">
+                <label>Blood group
+                  <select value={form.bloodGroup} onChange={(event) => updateField("bloodGroup", event.target.value)}>
+                    {bloodGroups.map((group) => <option key={group}>{group}</option>)}
+                  </select>
+                </label>
+                <label>Last donation date
+                  <input type="date" required={Boolean(profile.lastDonationDate)} max={new Date().toISOString().slice(0, 10)} value={form.lastDonationDate} onChange={(event) => updateField("lastDonationDate", event.target.value)} />
+                  <span className="form-help">Matching requires a 90-day interval after your last donation.</span>
+                </label>
+                <label className="check-row form-span-2">
+                  <input type="checkbox" checked={form.available} onChange={(event) => updateField("available", event.target.checked)} />
+                  Available to donate
+                </label>
+              </div>
+            </div>
+          )}
+          <div className="profile-form__section">
+            <h2>Location for nearby matching</h2>
+            <div className="form-grid">
+              <label>Latitude
+                <input required type="number" min="-90" max="90" step="any" value={form.latitude} onChange={(event) => updateField("latitude", event.target.value)} />
+              </label>
+              <label>Longitude
+                <input required type="number" min="-180" max="180" step="any" value={form.longitude} onChange={(event) => updateField("longitude", event.target.value)} />
+              </label>
+            </div>
+          </div>
+          {message && <div className="alert-card alert-card--success" role="status">{message}</div>}
+          {error && <div className="alert-card alert-card--error" role="alert">{error}</div>}
+          <div className="form-actions">
+            <button className="button button--primary" type="submit" disabled={saving}>{saving ? "Saving…" : "Save changes"}</button>
+            <span className="form-help">Your profile is only available to you and authorized workflows.</span>
+          </div>
         </form>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }

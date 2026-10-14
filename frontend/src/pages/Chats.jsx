@@ -15,6 +15,7 @@ export default function Chats() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [messagesLoadedFor, setMessagesLoadedFor] = useState(null);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -63,7 +64,10 @@ export default function Chats() {
       } catch (requestError) {
         if (active) setError(apiErrorMessage(requestError, "Unable to load messages."));
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setMessagesLoadedFor(chatId);
+          setLoading(false);
+        }
       }
     };
     load();
@@ -90,55 +94,66 @@ export default function Chats() {
   };
 
   const otherParticipant = (conversation) => role === "donor" ? conversation.hospital : conversation.donor;
+  const activeConversation = conversations.find((conversation) => conversation.id === chatId);
+  const activeParticipant = activeConversation ? otherParticipant(activeConversation) : null;
+  const messagesLoading = Boolean(chatId && messagesLoadedFor !== chatId);
 
   return (
-    <main style={{ background: "#fdf2f2", minHeight: "100vh", padding: 24 }}>
-      <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(260px, 0.8fr) 1.2fr", gap: 20 }}>
-        <section style={{ padding: 24, background: "white", borderRadius: 20 }}>
-          <h1 style={{ marginTop: 0 }}>Conversations</h1>
-          {loading && conversations.length === 0 ? <p>Loading conversations…</p> : conversations.length === 0 ? <p>No conversations yet. Start one from a blood request or donor match.</p> : conversations.map((conversation) => {
+    <main className="page-shell">
+      <div className="page-container">
+        <header className="page-heading">
+          <div><p className="eyebrow">PRIVATE COORDINATION</p><h1>Messages</h1><p className="page-lead">Conversations are only visible to their donor and hospital participants.</p></div>
+        </header>
+        {error && <div className="alert-card alert-card--error" role="alert">{error}</div>}
+        <div className="chat-layout">
+        <section className="panel chat-panel">
+          <div className="panel-heading"><div><p className="eyebrow">YOUR INBOX</p><h2>Conversations</h2></div><span className="count-badge">{conversations.length}</span></div>
+          {loading && conversations.length === 0 ? <p className="loading-state" role="status">Loading conversations…</p> : conversations.length === 0 ? <div className="empty-state"><h3>No conversations yet</h3><p>When you connect through a blood request or donor match, the conversation will appear here.</p></div> : (
+            <div className="conversation-list">{conversations.map((conversation) => {
             const participant = otherParticipant(conversation);
             return (
-              <button key={conversation.id} type="button" onClick={() => navigate(`/chats/${conversation.id}`)} style={{ display: "block", width: "100%", textAlign: "left", padding: 14, marginBottom: 10 }}>
+              <button className={`conversation-button${conversation.id === chatId ? " conversation-button--active" : ""}`} key={conversation.id} type="button" onClick={() => navigate(`/chats/${conversation.id}`)}>
                 <strong>{conversation.title || participant?.name || "Conversation"}</strong>
-                <div>{participant?.name || "Participant"}</div>
-                {conversation.unreadCount > 0 && <span>{conversation.unreadCount} unread</span>}
+                <span>{participant?.name || "Participant"}</span>
+                {conversation.unreadCount > 0 && <small>{conversation.unreadCount} unread</small>}
               </button>
             );
-          })}
+          })}</div>
+          )}
         </section>
-        <section style={{ padding: 24, background: "white", borderRadius: 20 }}>
+        <section className="panel chat-panel">
           {chatId ? (
             <>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                <h2>Messages</h2>
-                <button type="button" onClick={() => navigate("/chats")}>Back to conversations</button>
+              <div className="panel-heading">
+                <div><p className="eyebrow">CONVERSATION</p><h2>{activeParticipant?.name || "Messages"}</h2></div>
+                <button className="button button--quiet" type="button" onClick={() => navigate("/chats")}>Back</button>
               </div>
-              {loading ? <p>Loading messages…</p> : (
+              {messagesLoading ? <p className="loading-state" role="status">Loading messages…</p> : (
                 <>
-                  <div style={{ minHeight: 300, maxHeight: "60vh", overflowY: "auto", padding: 12, background: "#fff7f7", borderRadius: 12 }}>
+                  <div className="messages-list" aria-live="polite">
                     {messages.length === 0 ? <p>No messages yet. Start the conversation.</p> : messages.map((item) => {
                       const ownMessage = item.senderId === user?.id;
                       return (
-                        <div key={item.id} style={{ display: "flex", justifyContent: ownMessage ? "flex-end" : "flex-start", marginBottom: 12 }}>
-                          <div style={{ maxWidth: "80%", padding: 12, background: ownMessage ? "#b91c1c" : "#e2e8f0", color: ownMessage ? "white" : "#111827", borderRadius: 12 }}>
+                        <div className={`message-row${ownMessage ? " message-row--own" : ""}`} key={item.id}>
+                          <div className="message-bubble">
                             <small>{ownMessage ? "You" : item.senderName}</small>
-                            <div>{item.message}</div>
+                            <p>{item.message}</p>
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                  <form onSubmit={sendMessage} style={{ display: "flex", gap: 10, marginTop: 14 }}>
-                    <input required maxLength="4000" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Write a message…" style={{ flex: 1 }} />
-                    <button disabled={sending}>{sending ? "Sending…" : "Send"}</button>
+                  <form className="message-form" onSubmit={sendMessage}>
+                    <label className="sr-only" htmlFor="chat-message">Write a message</label>
+                    <input id="chat-message" required maxLength="4000" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Write a message…" />
+                    <button className="button button--primary" disabled={sending}>{sending ? "Sending…" : "Send"}</button>
                   </form>
                 </>
               )}
             </>
-          ) : <p>Select a conversation to view messages.</p>}
-          {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
+          ) : <div className="empty-state"><h3>Select a conversation</h3><p>Choose a conversation to read messages and reply.</p></div>}
         </section>
+        </div>
       </div>
     </main>
   );

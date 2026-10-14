@@ -27,6 +27,33 @@ export function displayRequestStatus(value) {
   return value ? value.toLowerCase() : "";
 }
 
+export function getDonorEligibility(profile, now = new Date()) {
+  if (!profile?.available) {
+    return { eligible: false, reason: "Your donor availability is turned off." };
+  }
+  if (!profile.lastDonationDate) {
+    return { eligible: true, reason: "" };
+  }
+
+  const donationDate = profile.lastDonationDate.slice(0, 10);
+  const eligibleDate = new Date(`${donationDate}T00:00:00.000Z`);
+  if (Number.isNaN(eligibleDate.getTime())) {
+    return { eligible: false, reason: "Your last donation date needs to be checked in your profile." };
+  }
+  eligibleDate.setUTCDate(eligibleDate.getUTCDate() + 90);
+  const today = now.toISOString().slice(0, 10);
+  const eligibleOn = eligibleDate.toISOString().slice(0, 10);
+
+  if (eligibleOn > today) {
+    return {
+      eligible: false,
+      reason: `Your last donation was recorded on ${donationDate}. Matching becomes available on ${eligibleOn}, after the 90-day recovery period.`,
+      eligibleOn,
+    };
+  }
+  return { eligible: true, reason: "" };
+}
+
 export function apiErrorMessage(error, fallback) {
   const body = error.response?.data;
   if (typeof body === "string" && body.trim()) return body;

@@ -1,6 +1,7 @@
 package com.bloodconnector.api.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,6 +51,18 @@ class JwtServiceTest {
                 .compact();
 
         assertThrows(ExpiredJwtException.class, () -> jwtService.extractSubject(expired));
+    }
+
+    @Test
+    void rejectsTokenForDisabledAccount() {
+        JwtService jwtService = new JwtService(SECRET, 60_000);
+        UserDetails disabledUser = User.withUsername("donor@example.com")
+                .password("encoded")
+                .roles("DONOR")
+                .disabled(true)
+                .build();
+
+        assertFalse(jwtService.isTokenValid(jwtService.generateToken(user()), disabledUser));
     }
 
     @Test
